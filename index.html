@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Streamer Simulator 2</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/src/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- 3D Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Top HUD Bar -->
+    <header id="top-hud">
+      <div class="hud-left">
+        <div class="game-logo">
+          <span class="logo-badge">LIVE</span>
+          <span class="logo-title">STREAMER SIM 2</span>
+        </div>
+        <div class="hud-stat balance-stat" id="hud-balance">
+          <span class="stat-icon">₴</span>
+          <span class="stat-value" id="balance-value">100</span>
+          <span class="stat-label">UAH</span>
+        </div>
+        <div class="hud-stat vehicle-stat" id="hud-vehicle">
+          <span class="stat-icon">🏍️</span>
+          <span class="stat-value" id="vehicle-name">Байк</span>
+        </div>
+      </div>
+
+      <div class="hud-center" id="hud-quest-container">
+        <div class="quest-pill" id="quest-pill">
+          <span class="quest-icon">📍</span>
+          <span class="quest-text" id="quest-text">Завантаження завдання...</span>
+          <span class="quest-dist" id="quest-dist">150м</span>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div class="hud-stat stream-stat" id="hud-stream-stat" style="display: none;">
+          <span class="stream-dot"></span>
+          <span class="stream-viewers" id="hud-stream-viewers">0</span> глядачів
+        </div>
+        <button id="btn-toggle-phone" class="hud-btn hud-phone-btn" title="Відкрити телефон (P)">
+          📱 <span class="btn-key">[P]</span> Телефон
+        </button>
+        <button id="btn-toggle-radio" class="hud-btn hidden" title="Перемкнути радіо (R)">
+          📻 <span class="btn-key">[R]</span> <span id="radio-btn-label">Радіо</span>
+        </button>
+        <button id="btn-toggle-map" class="hud-btn" title="Відкрити мапу (M)">
+          🗺️ <span class="btn-key">[M]</span>
+        </button>
+        <button id="btn-toggle-camera" class="hud-btn" title="Змінити вид камери: 1-ша або 3-тя особа (V)">
+          🎥 <span class="btn-key">[V]</span> <span id="camera-mode-label">3-тя особа</span>
+        </button>
+        <button id="btn-toggle-audio" class="hud-btn" title="Увімкнути/вимкнути звук">
+          🔊
+        </button>
+      </div>
+    </header>
+
+    <!-- First-Person Crosshair Dot -->
+    <div id="first-person-crosshair" class="fp-crosshair hidden">
+      <div class="crosshair-dot"></div>
+    </div>
+
+    <!-- Action Prompt Overlay (Center/Bottom) -->
+    <div id="interaction-prompt" class="interaction-prompt hidden">
+      <div class="prompt-key" id="prompt-key">E</div>
+      <div class="prompt-text" id="prompt-text">Сісти на байк</div>
+    </div>
+
+    <!-- Speedometer (when in vehicle) -->
+    <div id="speedometer" class="speedometer hidden">
+      <div class="speed-value" id="speed-value">0</div>
+      <div class="speed-unit">KM/H</div>
+      <div class="speed-gear" id="speed-gear">D</div>
+    </div>
+
+    <!-- Mini-Map Radar (Bottom Left) -->
+    <div id="minimap-container" class="minimap-container">
+      <div class="minimap-header">
+        <span>GPS НАВІГАЦІЯ</span>
+        <span class="gps-coords" id="minimap-target-text">Дім</span>
+      </div>
+      <canvas id="minimap-canvas" width="180" height="180"></canvas>
+      <!-- GTA 5 Status Bars: Health, Armor, Stamina -->
+      <div class="gta-bars-container">
+        <div class="gta-bar-wrapper gta-health-wrapper" title="Здоров'я">
+          <div class="gta-bar-fill gta-health-fill" id="gta-health-fill"></div>
+        </div>
+        <div class="gta-bar-wrapper gta-armor-wrapper" title="Броня">
+          <div class="gta-bar-fill gta-armor-fill" id="gta-armor-fill"></div>
+        </div>
+        <div class="gta-bar-wrapper gta-stamina-wrapper" title="Витривалість (Shift для бігу)">
+          <div class="gta-bar-fill gta-stamina-fill" id="gta-stamina-fill"></div>
+        </div>
+      </div>
+      <div class="minimap-legend">
+        <span class="legend-item"><span class="dot player-dot"></span> Ти</span>
+        <span class="legend-item"><span class="dot target-dot"></span> Ціль</span>
+      </div>
+    </div>
+
+    <!-- GTA 5 Radio Station Notification -->
+    <div id="gta-radio-banner" class="gta-radio-banner hidden">
+      <div class="radio-icon">📻</div>
+      <div class="radio-details">
+        <span class="radio-title" id="radio-station-title">Radio Los Santos</span>
+        <span class="radio-hint">Натисни [R] щоб змінити хвилю</span>
+      </div>
+    </div>
+
+    <!-- GTA 5 Location Notification Banner -->
+    <div id="gta-location-banner" class="gta-location-banner hidden">
+      <div class="loc-sub">РАЙОН МІСТА</div>
+      <div class="loc-main" id="gta-location-text">АЗС «ОККО» / GAS STATION</div>
+    </div>
+
+    <!-- GTA 5 Floating Cash Container -->
+    <div id="floating-cash-container" class="floating-cash-container"></div>
+
+    <!-- Tutorial Dialog Modal -->
+    <div id="tutorial-modal" class="tutorial-modal">
+      <div class="tutorial-card">
+        <div class="tutorial-badge">НАВЧАННЯ</div>
+        <h3 id="tutorial-title">Вітаємо у Streamer Simulator 2!</h3>
+        <p id="tutorial-body">
+          Ти щойно прокинувся біля заправки. У твоїй кишені <strong>100 гривень</strong>, а поруч стоїть твій новенький <strong>байк</strong>!
+        </p>
+        <div class="tutorial-hints">
+          <div class="hint-item">
+            <span class="hint-key">W A S D</span>
+            <span>Рух та керування байком</span>
+          </div>
+          <div class="hint-item">
+            <span class="hint-key">E</span>
+            <span>Сісти / вийти з транспорту</span>
+          </div>
+          <div class="hint-item">
+            <span class="hint-key">P</span>
+            <span>Відкрити смартфон</span>
+          </div>
+        </div>
+        <button id="btn-tutorial-next" class="btn-primary">Зрозуміло, поїхали!</button>
+      </div>
+    </div>
+
+    <!-- Full Map Modal -->
+    <div id="map-modal" class="map-modal hidden">
+      <div class="map-modal-content">
+        <div class="modal-header">
+          <h2>🗺️ КАРТА МІСТА СТРІМЕРІВ</h2>
+          <button class="btn-close" id="btn-close-map">✕</button>
+        </div>
+        <div class="map-modal-body">
+          <canvas id="large-map-canvas" width="600" height="600"></canvas>
+          <div class="map-locations-list">
+            <div class="loc-card loc-station">
+              <span class="loc-icon">⛽</span>
+              <div>
+                <strong>АЗС "ОККО/WOG"</strong>
+                <p>Твоя початкова точка спавну</p>
+              </div>
+            </div>
+            <div class="loc-card loc-house active">
+              <span class="loc-icon">🏠</span>
+              <div>
+                <strong>Твій Будинок</strong>
+                <p>Тут розташована твоя стрімерська кімната</p>
+              </div>
+            </div>
+            <div class="loc-card loc-dealership">
+              <span class="loc-icon">🏎️</span>
+              <div>
+                <strong>Автосалон "Авто-Мрія"</strong>
+                <p>Доставка куплених авто прямо до будинку!</p>
+              </div>
+            </div>
+            <div class="loc-card" style="border-left: 3px solid #ea580c;">
+              <span class="loc-icon">🛒</span>
+              <div>
+                <strong>Сільпо 24/7</strong>
+                <p>Енергетики, смачна піца, кава та шаурма</p>
+              </div>
+            </div>
+            <div class="loc-card" style="border-left: 3px solid #10b981;">
+              <span class="loc-icon">🎙️</span>
+              <div>
+                <strong>Rozetka Девайси</strong>
+                <p>Мікрофони, світло, 4K вебкамери для стріму</p>
+              </div>
+            </div>
+            <div class="loc-card" style="border-left: 3px solid #ec4899;">
+              <span class="loc-icon">👕</span>
+              <div>
+                <strong>Drip Store (Одяг)</strong>
+                <p>Стильні скіни персонажа, худі та окуляри</p>
+              </div>
+            </div>
+            <div class="loc-card" style="border-left: 3px solid #eab308;">
+              <span class="loc-icon">🔧</span>
+              <div>
+                <strong>СТО Тюнінг "West Coast"</strong>
+                <p>Nitro Boost на [Shift], неонове підсвічування</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Smartphone UI (Bottom Right) -->
+    <div id="phone-container" class="phone-container closed">
+      <div class="phone-notch">
+        <div class="phone-speaker"></div>
+        <div class="phone-camera"></div>
+      </div>
+      <div class="phone-status-bar">
+        <span class="phone-time" id="phone-clock">12:00</span>
+        <div class="phone-status-icons">
+          <span>5G</span>
+          <span>📶</span>
+          <span>🔋 100%</span>
+        </div>
+      </div>
+
+      <!-- Phone Screen Area -->
+      <div class="phone-screen" id="phone-screen">
+        <!-- Home Screen -->
+        <div class="phone-home" id="phone-home-screen">
+          <div class="phone-widgets">
+            <div class="widget-card widget-balance">
+              <span class="widget-title">Монобанк Баланс</span>
+              <div class="widget-amount"><span id="phone-widget-balance">100</span> ₴</div>
+              <span class="widget-sub">Стартовий капітал</span>
+            </div>
+            <div class="widget-card widget-stream-status" id="widget-stream-preview">
+              <span class="widget-title">Канал: Offline</span>
+              <div class="widget-stream-info">Купи ПК для запуску стріму!</div>
+            </div>
+          </div>
+
+          <div class="app-grid">
+            <div class="app-icon-item" data-app="pc-shop">
+              <div class="app-icon icon-shop">
+                💻
+                <span class="app-badge" id="pc-shop-badge">1</span>
+              </div>
+              <span class="app-name">Магазин ПК</span>
+            </div>
+
+            <div class="app-icon-item" data-app="car-dealer">
+              <div class="app-icon icon-cars">
+                🚗
+              </div>
+              <span class="app-name">Автосалон</span>
+            </div>
+
+            <div class="app-icon-item" data-app="stream-studio">
+              <div class="app-icon icon-stream">
+                🔴
+              </div>
+              <span class="app-name">Стрім Live</span>
+            </div>
+
+            <div class="app-icon-item" data-app="bank">
+              <div class="app-icon icon-bank">
+                💳
+              </div>
+              <span class="app-name">Монобанк</span>
+            </div>
+
+            <div class="app-icon-item" data-app="silpo">
+              <div class="app-icon icon-silpo" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                🛒
+              </div>
+              <span class="app-name">Сільпо 24/7</span>
+            </div>
+
+            <div class="app-icon-item" data-app="gear">
+              <div class="app-icon icon-gear" style="background: linear-gradient(135deg, #10b981, #059669);">
+                🎙️
+              </div>
+              <span class="app-name">Девайси</span>
+            </div>
+
+            <div class="app-icon-item" data-app="clothes">
+              <div class="app-icon icon-clothes" style="background: linear-gradient(135deg, #ec4899, #db2777);">
+                👕
+              </div>
+              <span class="app-name">Одяг/Скіни</span>
+            </div>
+
+            <div class="app-icon-item" data-app="tuning">
+              <div class="app-icon icon-tuning" style="background: linear-gradient(135deg, #eab308, #ca8a04);">
+                🔧
+              </div>
+              <span class="app-name">СТО Тюнінг</span>
+            </div>
+
+            <div class="app-icon-item" data-app="gps">
+              <div class="app-icon icon-gps">
+                🗺️
+              </div>
+              <span class="app-name">GPS Мапа</span>
+            </div>
+
+            <div class="app-icon-item" data-app="settings">
+              <div class="app-icon icon-settings">
+                ⚙️
+              </div>
+              <span class="app-name">Допомога</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- App: PC Shop -->
+        <div class="phone-app-view hidden" id="app-pc-shop">
+          <div class="app-nav">
+            <button class="btn-app-back">‹ Назад</button>
+            <span class="app-title">🛒 Магазин ПК</span>
+            <span class="app-balance-pill"><span class="app-bal-val">100</span> ₴</span>
+          </div>
+          <div class="app-content" id="pc-shop-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- App: Car Dealership -->
+        <div class="phone-app-view hidden" id="app-car-dealer">
+          <div class="app-nav">
+            <button class="btn-app-back">‹ Назад</button>
+            <span class="app-title">🏎️ Автосалон "Авто-Мрія"</span>
+            <span class="app-balance-pill"><span class="app-bal-val">100</span> ₴</span>
+          </div>
+          <div class="app-subheader-note">
+            ⚠️ <em>Увага: чим дешевше авто, тим воно повільніше, іржавіше та гірше!</em>
+          </div>
+          <div class="app-content" id="car-dealer-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- App: Stream Studio -->
+        <div class="phone-app-view hidden" id="app-stream-studio">
+          <div class="app-nav">
+            <button class="btn-app-back">‹ Назад</button>
+            <span class="app-title">🔴 Стрім Студія</span>
+          </div>
+          <div class="app-content" id="stream-studio-content">
+            <!-- Setup & Live controls -->
+          </div>
+        </div>
+
+        <!-- App: Bank -->
+        <div class="phone-app-view hidden" id="app-bank">
+          <div class="app-nav">
+            <button class="btn-app-back">‹ Назад</button>
+            <span class="app-title">💳 Монобанк</span>
+          </div>
+          <div class="app-content" id="bank-content">
+            <!-- Bank transactions and card -->
+          </div>
+        </div>
+
+        <!-- App: Silpo 24/7 -->
+        <div class="phone-app-view hidden" id="app-silpo">
+          <div class="app-nav">
+            <button class="btn-app-back">‹ Назад</button>
+            <span class="app-title">🛒 Сільпо 24/7</span>
+            <span class="app-balance-pill"><span class="app-bal-val">100</span> ₴</span>
+          </div>
+          <div class="app-subheader-note" style="background: rgba(234, 88, 12, 0.15); border-color: rgba(234, 88, 12, 0.3); color: #fdba74;">
+            ⚡ <em>Смачна їжа, кава та енергетики для відновлення сил стрімера!</em>
+          </div>
+          <div class="app-content" id="silpo-shop-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- App: Gear / Rozetka -->
+        <div class="phone-app-view hidden" id="app-gear">
+          <div class="app-nav">
+            <button class="btn-app-back">‹ Назад</button>
+            <span class="app-title">🎙️ Rozetka Девайси</span>
+            <span class="app-balance-pill"><span class="app-bal-val">100</span> ₴</span>
+          </div>
+          <div class="app-subheader-note" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: #6ee7b7;">
+            🔥 <em>Професійне обладнання підвищує приріст глядачів та суми донатів!</em>
+          </div>
+          <div class="app-content" id="gear-shop-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- App: Clothes / Drip Store -->
+        <div class="phone-app-view hidden" id="app-clothes">
+          <div class="app-nav">
+            <button class="btn-app-back">‹ Назад</button>
+            <span class="app-title">👕 Drip Store (Одяг & Скіни)</span>
+            <span class="app-balance-pill"><span class="app-bal-val">100</span> ₴</span>
+          </div>
+          <div class="app-subheader-note" style="background: rgba(236, 72, 153, 0.15); border-color: rgba(236, 72, 153, 0.3); color: #f472b6;">
+            ✨ <em>Змінюй свій 3D стиль персонажа: худі, неоновий кіберкостюм або золотий бомбер!</em>
+          </div>
+          <div class="app-content" id="clothes-shop-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- App: Tuning / STO Customs -->
+        <div class="phone-app-view hidden" id="app-tuning">
+          <div class="app-nav">
+            <button class="btn-app-back">‹ Назад</button>
+            <span class="app-title">🔧 СТО Тюнінг "West Coast"</span>
+            <span class="app-balance-pill"><span class="app-bal-val">100</span> ₴</span>
+          </div>
+          <div class="app-subheader-note" style="background: rgba(234, 179, 8, 0.15); border-color: rgba(234, 179, 8, 0.3); color: #fde047;">
+            🏎️ <em>Встанови Nitro Boost на [Shift], неонове підсвічування днища або нове фарбування!</em>
+          </div>
+          <div class="app-content" id="tuning-shop-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- App: Settings/Help -->
+        <div class="phone-app-view hidden" id="app-settings">
+          <div class="app-nav">
+            <button class="btn-app-back">‹ Назад</button>
+            <span class="app-title">⚙️ Допомога & Керування</span>
+          </div>
+          <div class="app-content" id="settings-content">
+            <div class="help-section">
+              <h4>Клавіші керування:</h4>
+              <p><strong>W, A, S, D</strong> — Рух / Їзда</p>
+              <p><strong>E</strong> — Сісти в байк або авто / Зайти в дім / Сісти за ПК</p>
+              <p><strong>P</strong> — Відкрити / закрити смартфон</p>
+              <p><strong>M</strong> — Відкрити повну карту міста</p>
+              <p><strong>H</strong> — Посигналити на транспорті (клаксон)</p>
+              <p><strong>Пробіл</strong> — Ручне гальмо / Стрибок</p>
+            </div>
+            <div class="help-section">
+              <h4>Про гру:</h4>
+              <p><strong>Streamer Simulator 2</strong> — оновлена симуляція життя стрімера. Заробляй на трансляціях, оновлюй комп'ютер та збирай колекцію крутих тачок!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phone Bottom Home Bar -->
+      <div class="phone-home-indicator" id="phone-home-btn" title="Додому / Закрити"></div>
+    </div>
+
+    <!-- Notification Toast Popup -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Touch Controls for Mobile/Tablets or on-screen play -->
+    <div id="touch-controls" class="touch-controls">
+      <div class="touch-dpad">
+        <button class="touch-btn touch-up" data-key="KeyW">▲</button>
+        <div class="touch-dpad-row">
+          <button class="touch-btn touch-left" data-key="KeyA">◀</button>
+          <button class="touch-btn touch-down" data-key="KeyS">▼</button>
+          <button class="touch-btn touch-right" data-key="KeyD">▶</button>
+        </div>
+      </div>
+      <div class="touch-actions">
+        <button class="touch-btn touch-action touch-horn" data-key="KeyH" title="Клаксон">📢</button>
+        <button class="touch-btn touch-action touch-interact" data-key="KeyE" title="Дія (E)">E</button>
+        <button class="touch-btn touch-action touch-phone" data-key="KeyP" title="Телефон (P)">📱</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
