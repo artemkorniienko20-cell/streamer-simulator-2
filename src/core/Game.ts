@@ -218,10 +218,6 @@ export class Game {
       this.handleKeyF();
     });
 
-    document.getElementById('btn-dev-money')?.addEventListener('click', () => {
-      this.handleKeyF();
-    });
-
     document.getElementById('btn-toggle-map')?.addEventListener('click', () => {
       this.toggleMap();
     });
