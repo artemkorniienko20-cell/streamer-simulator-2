@@ -283,7 +283,7 @@ export class MultiplayerSystem {
     // Friend body
     const bodyGeo = new THREE.CylinderGeometry(0.3, 0.35, 1.3, 10);
     const bodyMat = new THREE.MeshStandardMaterial({
-      color: state.isDev ? 0xf59e0b : 0x3b82f6,
+      color: 0x3b82f6,
       roughness: 0.5
     });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
@@ -307,14 +307,14 @@ export class MultiplayerSystem {
     ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
     ctx.roundRect ? ctx.roundRect(4, 4, 248, 56, 12) : ctx.fillRect(4, 4, 248, 56);
     ctx.fill();
-    ctx.strokeStyle = state.isDev ? '#fbbf24' : '#38bdf8';
+    ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    ctx.fillStyle = state.isDev ? '#fbbf24' : '#ffffff';
+    ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 22px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(state.isDev ? `👑 ${state.name}` : `👤 ${state.name}`, 128, 38);
+    ctx.fillText(`👤 ${state.name}`, 128, 38);
 
     const texture = new THREE.CanvasTexture(canvas);
     const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });

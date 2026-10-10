@@ -49,10 +49,7 @@ export class MainMenuUI {
         <div class="google-profile-card" id="btn-open-google-modal" title="Натисніть для зміни Google акаунту">
           <img id="menu-user-avatar" src="" alt="Avatar" class="menu-avatar" />
           <div class="menu-user-info">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <span id="menu-user-name" class="menu-name">Гість</span>
-              <span id="menu-dev-badge" class="badge-dev hidden">👑 DEV / ВЛАСНИК</span>
-            </div>
+            <span id="menu-user-name" class="menu-name">Гість</span>
             <span id="menu-user-email" class="menu-email">guest@streamer.ua</span>
           </div>
           <button class="btn-switch-account">Змінити акаунт</button>
@@ -192,24 +189,7 @@ export class MainMenuUI {
           </div>
 
           <div class="google-accounts-list">
-            <!-- Special Dev Account Option -->
-            <div class="google-account-item dev-account-highlight" data-email="korn333@gmail.com" data-name="Korn333 (👑 DEV Власник)">
-              <div class="google-avatar-wrapper">
-                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=KornDevCrown" class="google-avatar" />
-                <span class="crown-icon">👑</span>
-              </div>
-              <div class="google-acc-details">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <strong>Korn333</strong>
-                  <span class="badge-dev">DEV ВЛАСНИК</span>
-                </div>
-                <span class="acc-email">korn333@gmail.com</span>
-                <span style="font-size: 10px; color: #f59e0b;">✨ Право видавати собі гроші на [M]!</span>
-              </div>
-              <span class="btn-select-acc">Обрати</span>
-            </div>
-
-            <!-- Standard Player Account -->
+            <!-- Standard Player Account 1 -->
             <div class="google-account-item" data-email="artem.streamer@gmail.com" data-name="Артем Стрімер">
               <div class="google-avatar-wrapper">
                 <img src="https://api.dicebear.com/7.x/bottts/svg?seed=ArtemStreamer" class="google-avatar" />
@@ -217,7 +197,20 @@ export class MainMenuUI {
               <div class="google-acc-details">
                 <strong>Артем Стрімер</strong>
                 <span class="acc-email">artem.streamer@gmail.com</span>
-                <span style="font-size: 10px; color: #64748b;">Звичайний профіль гравця</span>
+                <span style="font-size: 10px; color: #64748b;">Профіль гравця #1</span>
+              </div>
+              <span class="btn-select-acc">Обрати</span>
+            </div>
+
+            <!-- Standard Player Account 2 -->
+            <div class="google-account-item" data-email="streamer.ua@gmail.com" data-name="UA Streamer">
+              <div class="google-avatar-wrapper">
+                <img src="https://api.dicebear.com/7.x/bottts/svg?seed=UAStreamer" class="google-avatar" />
+              </div>
+              <div class="google-acc-details">
+                <strong>UA Streamer</strong>
+                <span class="acc-email">streamer.ua@gmail.com</span>
+                <span style="font-size: 10px; color: #64748b;">Профіль гравця #2</span>
               </div>
               <span class="btn-select-acc">Обрати</span>
             </div>
@@ -484,19 +477,9 @@ export class MainMenuUI {
     const avatarEl = this.containerEl.querySelector('#menu-user-avatar') as HTMLImageElement;
     const nameEl = this.containerEl.querySelector('#menu-user-name');
     const emailEl = this.containerEl.querySelector('#menu-user-email');
-    const devBadgeEl = this.containerEl.querySelector('#menu-dev-badge');
-
     if (avatarEl) avatarEl.src = user.avatar;
     if (nameEl) nameEl.textContent = user.name;
     if (emailEl) emailEl.textContent = user.email;
-
-    if (devBadgeEl) {
-      if (this.auth.isDevAccount()) {
-        devBadgeEl.classList.remove('hidden');
-      } else {
-        devBadgeEl.classList.add('hidden');
-      }
-    }
   }
 
   private openGoogleModal(): void {

@@ -6,6 +6,7 @@ export class InputManager {
   private onHornCallbacks: Array<() => void> = [];
   private onCameraToggleCallbacks: Array<() => void> = [];
   private onRadioCallbacks: Array<() => void> = [];
+  private onDevCheatCallbacks: Array<() => void> = [];
 
   // Mouse orbit camera controls
   public mouseDeltaX: number = 0;
@@ -33,6 +34,8 @@ export class InputManager {
       this.onPhoneCallbacks.forEach((cb) => cb());
     } else if (e.code === 'KeyM') {
       this.onMapCallbacks.forEach((cb) => cb());
+    } else if (e.code === 'KeyF') {
+      this.onDevCheatCallbacks.forEach((cb) => cb());
     } else if (e.code === 'KeyH') {
       this.onHornCallbacks.forEach((cb) => cb());
     } else if (e.code === 'KeyV') {
@@ -205,6 +208,10 @@ export class InputManager {
 
   public onRadio(cb: () => void): void {
     this.onRadioCallbacks.push(cb);
+  }
+
+  public onDevCheat(cb: () => void): void {
+    this.onDevCheatCallbacks.push(cb);
   }
 
   public requestPointerLock(): void {

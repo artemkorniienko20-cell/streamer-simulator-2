@@ -251,13 +251,14 @@ export class AudioManager {
   }
 
   // ==================== GTA 5 RADIO STATIONS ====================
-  private radioStationIndex: number = 0; // 0 = Off, 1 = Radio Los Santos, 2 = Nightride FM
+  private radioStationIndex: number = 0; // 0 = Off, 1 = Radio Los Santos, 2 = Nightride FM, 3 = SadSvit — Касета
   private radioTimer: number | null = null;
   private radioStep: number = 0;
   private readonly radioStations = [
     { id: 0, name: 'Радіо Вимкнено', genre: 'Mute' },
     { id: 1, name: '📻 Radio Los Santos', genre: 'West Coast Beats' },
-    { id: 2, name: '📻 Nightride FM', genre: '80s Synthwave' }
+    { id: 2, name: '📻 Nightride FM', genre: '80s Synthwave' },
+    { id: 3, name: '📻 SadSvit — Касета', genre: 'Ukrainian Post-Punk' }
   ];
 
   public nextRadioStation(): { id: number; name: string } {
@@ -286,7 +287,10 @@ export class AudioManager {
     }
 
     this.radioStep = 0;
-    const intervalMs = this.radioStationIndex === 1 ? 280 : 180; // Hip-hop vs Synthwave tempo
+    let intervalMs = 280;
+    if (this.radioStationIndex === 1) intervalMs = 280; // Radio Los Santos
+    else if (this.radioStationIndex === 2) intervalMs = 180; // Nightride FM
+    else if (this.radioStationIndex === 3) intervalMs = 125; // SadSvit — Касета (125 BPM post-punk 16ths)
 
     this.radioTimer = window.setInterval(() => {
       this.tickRadioBeat();
@@ -329,6 +333,62 @@ export class AudioManager {
       const arpNotes = [174.61, 220.00, 261.63, 329.63, 261.63, 220.00, 349.23, 392.00];
       const note = arpNotes[step % arpNotes.length];
       this.playSynthNote(note, 0.15, 'sawtooth', 0.035, now);
+    } else if (this.radioStationIndex === 3) {
+      // --- SadSvit — Касета: Ukrainian Post-Punk / Synthwave ---
+      const totalSteps = 64;
+      const curStep = (this.radioStep - 1) % totalSteps;
+      const bar = Math.floor(curStep / 16); // 0: Dm, 1: Bb, 2: F, 3: C
+      const stepInBar = curStep % 16;
+
+      // 1. Post-Punk Drum Machine (Four-on-the-floor + punchy snare + hi-hat)
+      if (stepInBar % 4 === 0) {
+        this.playDrumKick(now);
+      }
+      if (stepInBar === 4 || stepInBar === 12) {
+        this.playDrumSnare(now);
+      }
+      if (stepInBar % 2 === 0) {
+        this.playDrumHiHat(now);
+      }
+
+      // 2. Driving 8th-note Post-Punk Bassline (D2, Bb1, F2, C2)
+      if (stepInBar % 2 === 0) {
+        const rootFreqs = [73.42, 58.27, 87.31, 65.41]; // D2, Bb1, F2, C2
+        const root = rootFreqs[bar];
+        const isOctave = stepInBar === 14;
+        const bassFreq = isOctave ? root * 2 : root;
+        this.playSynthNote(bassFreq, 0.16, 'sawtooth', 0.055, now);
+      }
+
+      // 3. Iconic Nostalgic Hook Melody ("Я пам'ятаю кожен день...")
+      const melodyMap: Record<number, number> = {
+        // Bar 0: Dm
+        0: 440.00,  // A4
+        4: 440.00,  // A4
+        8: 392.00,  // G4
+        12: 349.23, // F4
+        // Bar 1: Bb
+        16: 349.23, // F4
+        20: 392.00, // G4
+        24: 349.23, // F4
+        28: 329.63, // E4
+        // Bar 2: F
+        32: 349.23, // F4
+        36: 329.63, // E4
+        40: 293.66, // D4
+        44: 329.63, // E4
+        // Bar 3: C
+        48: 293.66, // D4
+        52: 261.63, // C4
+        56: 293.66, // D4
+        60: 329.63  // E4
+      };
+
+      if (melodyMap[curStep] !== undefined) {
+        const freq = melodyMap[curStep];
+        this.playSynthNote(freq, 0.42, 'triangle', 0.065, now);
+        this.playSynthNote(freq * 1.002, 0.38, 'sine', 0.045, now);
+      }
     }
   }
 
@@ -359,6 +419,21 @@ export class AudioManager {
     gain.connect(this.ctx.destination);
     osc.start(time);
     osc.stop(time + 0.1);
+  }
+
+  private playDrumHiHat(time: number): void {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(5500, time);
+    osc.frequency.exponentialRampToValueAtTime(8000, time + 0.03);
+    gain.gain.setValueAtTime(0.025, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(time);
+    osc.stop(time + 0.04);
   }
 
   private playSynthNote(freq: number, duration: number, type: OscillatorType, volume: number, time: number): void {

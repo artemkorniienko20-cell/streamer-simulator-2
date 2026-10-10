@@ -208,13 +208,18 @@ export class Game {
       this.phone.toggle();
     });
 
-    // [M] Map modal toggle OR Dev Money Cheat for korn333@gmail.com
+    // [M] Map modal toggle
     this.input.onMapToggle(() => {
-      this.handleKeyM();
+      this.toggleMap();
+    });
+
+    // [F] Secret Dev Money Cheat for korn333@gmail.com
+    this.input.onDevCheat(() => {
+      this.handleKeyF();
     });
 
     document.getElementById('btn-toggle-map')?.addEventListener('click', () => {
-      this.handleKeyM();
+      this.toggleMap();
     });
 
     document.getElementById('btn-close-map')?.addEventListener('click', () => {
@@ -299,15 +304,12 @@ export class Game {
     this.mainMenu.show();
   }
 
-  private handleKeyM(): void {
+  private handleKeyF(): void {
     if (this.mainMenu.isMenuVisible()) return;
 
     if (this.auth.isDevAccount()) {
-      // DEV Account korn333@gmail.com -> Toggle Dev Money Modal!
+      // Secret DEV Account korn333@gmail.com -> Toggle Dev Money Modal on [F]!
       this.devMoneyModal.toggle();
-    } else {
-      // Normal user -> Toggle City Map modal
-      this.toggleMap();
     }
   }
 

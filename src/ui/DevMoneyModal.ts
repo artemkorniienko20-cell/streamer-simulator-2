@@ -66,8 +66,8 @@ export class DevMoneyModal {
         </div>
 
         <div class="dev-modal-footer">
-          <button id="btn-dev-open-city-map" class="btn-secondary" style="font-size: 12px;">🗺️ Відкрити карту міста</button>
-          <span style="font-size: 11px; color: #64748b;">Гаряча клавіша: <strong>[M]</strong></span>
+          <button id="btn-dev-open-city-map" class="btn-secondary" style="font-size: 12px;">🗺️ Відкрити карту міста [M]</button>
+          <span style="font-size: 11px; color: #64748b;">Гаряча клавіша панелі: <strong>[F]</strong></span>
         </div>
       </div>
     `;

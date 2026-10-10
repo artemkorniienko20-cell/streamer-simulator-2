@@ -16,6 +16,9 @@ export class AuthSystem {
       try {
         const parsed = JSON.parse(saved);
         parsed.isDev = parsed.email?.toLowerCase().trim() === DEV_EMAIL.toLowerCase();
+        if (parsed.isDev && parsed.name?.includes('DEV')) {
+          parsed.name = 'Korn';
+        }
         return parsed;
       } catch {
         // Fallback
@@ -47,7 +50,7 @@ export class AuthSystem {
     let defaultName = name;
     if (!defaultName) {
       if (isDev) {
-        defaultName = 'Korn333 (👑 DEV / Власник)';
+        defaultName = 'Korn';
       } else {
         defaultName = cleanEmail.split('@')[0] || 'Стрімер';
       }
