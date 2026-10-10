@@ -75,3 +75,41 @@ export interface TutorialStep {
   targetName?: string;
   checkComplete: () => boolean;
 }
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  name: string;
+  avatar: string;
+  isDev: boolean;
+}
+
+export interface LobbyRoom {
+  id: string;
+  name: string;
+  hostName: string;
+  hostEmail: string;
+  isPrivate: boolean;
+  password?: string;
+  maxPlayers: number;
+  currentPlayers: number;
+  createdAt: number;
+  status: 'waiting' | 'in_game';
+}
+
+export interface MultiplayerPeerState {
+  id: string;
+  name: string;
+  email: string;
+  isDev: boolean;
+  x: number;
+  y: number;
+  z: number;
+  rotY: number;
+  isRidingVehicle: boolean;
+  vehicleId?: string;
+  outfitId?: string;
+  isStreaming: boolean;
+  lastSeen: number;
+}
+

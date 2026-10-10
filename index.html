@@ -42,6 +42,9 @@
       </div>
 
       <div class="hud-right">
+        <div id="hud-multiplayer-badge" class="hud-stat hidden" style="background: rgba(168, 85, 247, 0.2); border-color: rgba(168, 85, 247, 0.4); color: #c084fc; font-weight: 700; font-size: 11px;">
+          <span>🌐</span> <span id="hud-multiplayer-room-name">Лобі</span>
+        </div>
         <div class="hud-stat stream-stat" id="hud-stream-stat" style="display: none;">
           <span class="stream-dot"></span>
           <span class="stream-viewers" id="hud-stream-viewers">0</span> глядачів
@@ -52,11 +55,14 @@
         <button id="btn-toggle-radio" class="hud-btn hidden" title="Перемкнути радіо (R)">
           📻 <span class="btn-key">[R]</span> <span id="radio-btn-label">Радіо</span>
         </button>
-        <button id="btn-toggle-map" class="hud-btn" title="Відкрити мапу (M)">
+        <button id="btn-toggle-map" class="hud-btn" title="Мапа / Dev панель (M)">
           🗺️ <span class="btn-key">[M]</span>
         </button>
         <button id="btn-toggle-camera" class="hud-btn" title="Змінити вид камери: 1-ша або 3-тя особа (V)">
           🎥 <span class="btn-key">[V]</span> <span id="camera-mode-label">3-тя особа</span>
+        </button>
+        <button id="btn-open-menu" class="hud-btn" title="Головне меню гри">
+          🏠 Меню
         </button>
         <button id="btn-toggle-audio" class="hud-btn" title="Увімкнути/вимкнути звук">
           🔊
@@ -448,6 +454,11 @@
             <div class="help-section">
               <h4>Про гру:</h4>
               <p><strong>Streamer Simulator 2</strong> — оновлена симуляція життя стрімера. Заробляй на трансляціях, оновлюй комп'ютер та збирай колекцію крутих тачок!</p>
+            </div>
+            <div style="margin-top: 14px;">
+              <button id="btn-phone-return-menu" class="btn-primary" style="width: 100%; background: linear-gradient(135deg, #475569, #334155); font-weight: 700; border-radius: 12px; padding: 12px;">
+                🏠 Вийти в головне меню
+              </button>
             </div>
           </div>
         </div>

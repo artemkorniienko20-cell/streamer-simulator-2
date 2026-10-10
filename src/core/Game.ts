@@ -18,6 +18,10 @@ import { CARS_CATALOG } from '../data/items';
 import { CollisionSystem } from '../systems/CollisionSystem';
 import { SkyDome } from '../world/SkyDome';
 import { PostProcessingManager } from './PostProcessing';
+import { AuthSystem } from '../systems/AuthSystem';
+import { MultiplayerSystem } from '../systems/MultiplayerSystem';
+import { MainMenuUI } from '../ui/MainMenuUI';
+import { DevMoneyModal } from '../ui/DevMoneyModal';
 
 export class Game {
   private canvas: HTMLCanvasElement;
@@ -33,6 +37,8 @@ export class Game {
   private streamSim: StreamSimulation;
   private collisionSystem: CollisionSystem;
   private postProcessing: PostProcessingManager;
+  private auth: AuthSystem;
+  private multiplayer: MultiplayerSystem;
 
   // World & Entities
   private skyDome: SkyDome;
@@ -48,6 +54,9 @@ export class Game {
   private hud: HudUI;
   private minimap: MiniMapUI;
   private phone: PhoneUI;
+  private mainMenu: MainMenuUI;
+  private devMoneyModal: DevMoneyModal;
+  private isGameActive: boolean = false;
 
   // Camera Orbit State
   private cameraYaw: number = 0;
@@ -67,6 +76,8 @@ export class Game {
     this.tutorial = new TutorialSystem();
     this.streamSim = new StreamSimulation(this.economy, this.audio);
     this.collisionSystem = new CollisionSystem();
+    this.auth = new AuthSystem();
+    this.multiplayer = new MultiplayerSystem(this.auth.getCurrentUser());
 
     // 2. Setup Three.js Scene, Camera, Renderer
     this.scene = new THREE.Scene();
@@ -131,8 +142,19 @@ export class Game {
       (tierIndex) => this.house.updatePcModel(tierIndex),
       (outfitId) => this.player.setOutfit(outfitId),
       () => this.applyTuningToActiveCar(),
-      (item) => this.hud.showToast(`Смачного! Ви спожили: ${item.name} (${item.effect.bonusText || ''})`, 'success')
+      (item) => this.hud.showToast(`Смачного! Ви спожили: ${item.name} (${item.effect.bonusText || ''})`, 'success'),
+      () => this.openMainMenu()
     );
+
+    this.multiplayer.setScene(this.scene);
+    this.devMoneyModal = new DevMoneyModal(this.economy, this.audio, () => this.toggleMap());
+    this.mainMenu = new MainMenuUI(this.auth, this.multiplayer, this.audio, (mode) => this.onStartGame(mode));
+
+    // Hide HUD until game is launched from Main Menu
+    const hudContainer = document.getElementById('hud-container');
+    if (hudContainer) {
+      hudContainer.style.display = 'none';
+    }
 
     // 7. Event Handlers
     this.setupEvents();
@@ -186,23 +208,23 @@ export class Game {
       this.phone.toggle();
     });
 
-    // [M] Map modal toggle
+    // [M] Map modal toggle OR Dev Money Cheat for korn333@gmail.com
     this.input.onMapToggle(() => {
-      const mapModal = document.getElementById('map-modal');
-      mapModal?.classList.toggle('hidden');
-      this.input.exitPointerLock();
-      this.audio.playClick();
+      this.handleKeyM();
     });
 
     document.getElementById('btn-toggle-map')?.addEventListener('click', () => {
-      document.getElementById('map-modal')?.classList.toggle('hidden');
-      this.input.exitPointerLock();
-      this.audio.playClick();
+      this.handleKeyM();
     });
 
     document.getElementById('btn-close-map')?.addEventListener('click', () => {
       document.getElementById('map-modal')?.classList.add('hidden');
       this.audio.playClick();
+    });
+
+    // Open Main Menu button in HUD
+    document.getElementById('btn-open-menu')?.addEventListener('click', () => {
+      this.openMainMenu();
     });
 
     // [H] Horn on vehicle
@@ -248,6 +270,52 @@ export class Game {
     this.economy.onBalanceChange((bal) => {
       this.hud.updateBalance(bal);
     });
+  }
+
+  private onStartGame(mode: 'solo' | 'multiplayer'): void {
+    this.isGameActive = true;
+    const hudEl = document.getElementById('hud-container');
+    if (hudEl) hudEl.style.display = 'flex';
+
+    const multiBadge = document.getElementById('hud-multiplayer-badge');
+    const multiRoomName = document.getElementById('hud-multiplayer-room-name');
+
+    if (mode === 'solo') {
+      this.multiplayer.leaveLobby();
+      multiBadge?.classList.add('hidden');
+      this.hud.showToast('Одиночну гру розпочато!', 'info');
+    } else {
+      const lobby = this.multiplayer.getCurrentLobby();
+      multiBadge?.classList.remove('hidden');
+      if (multiRoomName) {
+        multiRoomName.textContent = lobby ? lobby.name : 'Мультиплеєр';
+      }
+      this.hud.showToast(`Приєднано до лобі: ${lobby?.name || 'Мультиплеєр'}!`, 'success');
+    }
+  }
+
+  public openMainMenu(): void {
+    this.input.exitPointerLock();
+    this.mainMenu.show();
+  }
+
+  private handleKeyM(): void {
+    if (this.mainMenu.isMenuVisible()) return;
+
+    if (this.auth.isDevAccount()) {
+      // DEV Account korn333@gmail.com -> Toggle Dev Money Modal!
+      this.devMoneyModal.toggle();
+    } else {
+      // Normal user -> Toggle City Map modal
+      this.toggleMap();
+    }
+  }
+
+  private toggleMap(): void {
+    const mapModal = document.getElementById('map-modal');
+    mapModal?.classList.toggle('hidden');
+    this.input.exitPointerLock();
+    this.audio.playClick();
   }
 
   private toggleRadio(): void {
@@ -423,6 +491,26 @@ export class Game {
     // 0. Update SkyDome & Shop Beacons
     this.skyDome.update(timeSec);
     this.cityMap.updateShopMarkers(timeSec);
+
+    // If main menu is visible, smooth cinematic orbit
+    if (this.mainMenu.isMenuVisible()) {
+      this.cameraYaw += dt * 0.12;
+      this.updateCamera(dt);
+      return;
+    }
+
+    // Multiplayer synchronization
+    if (this.multiplayer.isInMultiplayer()) {
+      this.multiplayer.broadcastPlayerState(
+        this.player.getPosition(),
+        this.player.isRidingVehicle && this.activeVehicle ? this.activeVehicle.mesh.rotation.y : this.player.mesh.rotation.y,
+        this.player.isRidingVehicle,
+        this.activeVehicle?.name,
+        this.economy.getActiveOutfit(),
+        this.streamSim.isStreaming()
+      );
+      this.multiplayer.update(dt, this.player.getPosition());
+    }
 
     // Update Camera Orbit from Mouse input
     const { dx, dy, zoom } = this.input.getAndResetMouseDeltas();

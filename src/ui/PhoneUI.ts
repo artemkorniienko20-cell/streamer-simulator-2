@@ -34,6 +34,7 @@ export class PhoneUI {
   private onOutfitChange?: (outfitId: string) => void;
   private onCarTuningChange?: () => void;
   private onFoodConsume?: (item: ShopItem) => void;
+  private onOpenMainMenu?: () => void;
 
   constructor(
     economy: EconomySystem,
@@ -44,7 +45,8 @@ export class PhoneUI {
     onPcUpdated: (tier: number) => void,
     onOutfitChange?: (outfitId: string) => void,
     onCarTuningChange?: () => void,
-    onFoodConsume?: (item: ShopItem) => void
+    onFoodConsume?: (item: ShopItem) => void,
+    onOpenMainMenu?: () => void
   ) {
     this.economy = economy;
     this.streamSim = streamSim;
@@ -55,6 +57,7 @@ export class PhoneUI {
     this.onOutfitChange = onOutfitChange;
     this.onCarTuningChange = onCarTuningChange;
     this.onFoodConsume = onFoodConsume;
+    this.onOpenMainMenu = onOpenMainMenu;
 
     this.containerEl = document.getElementById('phone-container')!;
     this.clockEl = document.getElementById('phone-clock')!;
@@ -139,6 +142,12 @@ export class PhoneUI {
       } else {
         this.close();
       }
+    });
+
+    // Return to main menu from phone settings
+    document.getElementById('btn-phone-return-menu')?.addEventListener('click', () => {
+      this.close();
+      this.onOpenMainMenu?.();
     });
 
     // App icons click
