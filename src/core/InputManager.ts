@@ -7,6 +7,9 @@ export class InputManager {
   private onCameraToggleCallbacks: Array<() => void> = [];
   private onRadioCallbacks: Array<() => void> = [];
   private onDevCheatCallbacks: Array<() => void> = [];
+  private onVoiceStartCallbacks: Array<() => void> = [];
+  private onVoiceEndCallbacks: Array<() => void> = [];
+  private isVoiceActive: boolean = false;
 
   // Mouse orbit camera controls
   public mouseDeltaX: number = 0;
@@ -39,6 +42,11 @@ export class InputManager {
       this.onMapCallbacks.forEach((cb) => cb());
     } else if (code === 'KeyF' || key === 'f' || key === 'а') {
       this.onDevCheatCallbacks.forEach((cb) => cb());
+    } else if (code === 'KeyX' || key === 'x' || key === 'ч') {
+      if (!this.isVoiceActive) {
+        this.isVoiceActive = true;
+        this.onVoiceStartCallbacks.forEach((cb) => cb());
+      }
     } else if (code === 'KeyH' || key === 'h' || key === 'р') {
       this.onHornCallbacks.forEach((cb) => cb());
     } else if (code === 'KeyV' || key === 'v' || key === 'м') {
@@ -50,6 +58,15 @@ export class InputManager {
 
   private handleKeyUp(e: KeyboardEvent): void {
     this.keys[e.code] = false;
+
+    const code = e.code;
+    const key = e.key ? e.key.toLowerCase() : '';
+    if (code === 'KeyX' || key === 'x' || key === 'ч') {
+      if (this.isVoiceActive) {
+        this.isVoiceActive = false;
+        this.onVoiceEndCallbacks.forEach((cb) => cb());
+      }
+    }
   }
 
   public alwaysTrackMouse: boolean = false;
@@ -215,6 +232,14 @@ export class InputManager {
 
   public onDevCheat(cb: () => void): void {
     this.onDevCheatCallbacks.push(cb);
+  }
+
+  public onVoiceStart(cb: () => void): void {
+    this.onVoiceStartCallbacks.push(cb);
+  }
+
+  public onVoiceEnd(cb: () => void): void {
+    this.onVoiceEndCallbacks.push(cb);
   }
 
   public requestPointerLock(): void {

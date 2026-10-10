@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Peer, DataConnection } from 'peerjs';
+import { Peer, DataConnection, MediaConnection } from 'peerjs';
 import { LobbyRoom, MultiplayerPeerState, UserAccount } from '../types';
 
 export class MultiplayerSystem {
@@ -7,22 +7,28 @@ export class MultiplayerSystem {
   private currentLobby: LobbyRoom | null = null;
   private currentUser: UserAccount;
   private channel: BroadcastChannel | null = null;
-  private peers: Map<string, { state: MultiplayerPeerState; mesh?: THREE.Group; targetPos: THREE.Vector3; targetRotY: number }> = new Map();
+  private peers: Map<string, { state: MultiplayerPeerState; mesh?: THREE.Group; targetPos: THREE.Vector3; targetRotY: number; nameplateCanvas?: HTMLCanvasElement; nameplateTexture?: THREE.CanvasTexture }> = new Map();
   private scene: THREE.Scene | null = null;
 
   // WebRTC PeerJS
   private peer: Peer | null = null;
   private connections: Map<string, DataConnection> = new Map();
+  private mediaCalls: Map<string, MediaConnection> = new Map();
   private hostConnection: DataConnection | null = null;
   private isHost: boolean = false;
   private processedMsgIds: Set<string> = new Set();
+
+  // Voice Chat (Push-to-Talk on [X])
+  private localAudioStream: MediaStream | null = null;
+  private isTalking: boolean = false;
+  private onVoiceStatusChangeCallbacks: Array<(isTalking: boolean) => void> = [];
 
   private onPeersChangeCallbacks: Array<(peers: MultiplayerPeerState[]) => void> = [];
   private onChatCallbacks: Array<(sender: string, text: string) => void> = [];
   private onLobbyStateCallbacks: Array<(lobby: LobbyRoom | null) => void> = [];
   private onLobbiesChangeCallbacks: Array<(lobbies: LobbyRoom[]) => void> = [];
 
-  // Bot friend for single-instance / solo testing
+  // Bot companion friend for solo testing
   private botFriend: {
     state: MultiplayerPeerState;
     targetX: number;
@@ -156,6 +162,9 @@ export class MultiplayerSystem {
     // Spawn companion friend if alone so host sees another player
     this.setupBotFriend();
 
+    // Init voice chat mic silently in background
+    this.initVoiceChat().catch(() => {});
+
     return newLobby;
   }
 
@@ -205,8 +214,11 @@ export class MultiplayerSystem {
     this.notifyLobbyState();
     this.notifyLobbiesChange();
 
-    // If nobody else in lobby yet, companion friend will welcome you
+    // Companion friend will welcome you if alone
     this.setupBotFriend();
+
+    // Init voice chat mic silently in background
+    this.initVoiceChat().catch(() => {});
 
     return { success: true, lobby };
   }
@@ -248,6 +260,132 @@ export class MultiplayerSystem {
     return this.currentLobby !== null;
   }
 
+  // ==================== VOICE CHAT (PUSH-TO-TALK ON [X]) ====================
+  public async initVoiceChat(): Promise<boolean> {
+    if (this.localAudioStream) return true;
+    try {
+      this.localAudioStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        },
+        video: false
+      });
+
+      // Muted by default: audio only transmits when [X] is held down
+      this.localAudioStream.getAudioTracks().forEach((track) => {
+        track.enabled = false;
+      });
+
+      // If active connections exist, call peers with voice stream
+      if (this.peer) {
+        if (this.isHost) {
+          this.connections.forEach((_conn, peerId) => {
+            this.callPeerAudio(peerId);
+          });
+        } else if (this.hostConnection) {
+          const hostPeerId = this.hostConnection.peer;
+          this.callPeerAudio(hostPeerId);
+        }
+      }
+
+      return true;
+    } catch {
+      // Microphone not available or permission denied
+      return false;
+    }
+  }
+
+  public async startVoiceTransmission(): Promise<void> {
+    this.isTalking = true;
+
+    if (!this.localAudioStream) {
+      await this.initVoiceChat();
+    }
+
+    if (this.localAudioStream) {
+      this.localAudioStream.getAudioTracks().forEach((track) => {
+        track.enabled = true;
+      });
+    }
+
+    // Broadcast talking packet so nameplate glows
+    this.broadcastMessage({
+      type: 'voice_talking',
+      lobbyId: this.currentLobby?.id,
+      sessionId: this.sessionId,
+      isTalking: true
+    });
+
+    this.onVoiceStatusChangeCallbacks.forEach((cb) => cb(true));
+  }
+
+  public stopVoiceTransmission(): void {
+    this.isTalking = false;
+
+    if (this.localAudioStream) {
+      this.localAudioStream.getAudioTracks().forEach((track) => {
+        track.enabled = false;
+      });
+    }
+
+    // Broadcast talking stopped
+    this.broadcastMessage({
+      type: 'voice_talking',
+      lobbyId: this.currentLobby?.id,
+      sessionId: this.sessionId,
+      isTalking: false
+    });
+
+    this.onVoiceStatusChangeCallbacks.forEach((cb) => cb(false));
+  }
+
+  public onVoiceStatusChange(cb: (isTalking: boolean) => void): void {
+    this.onVoiceStatusChangeCallbacks.push(cb);
+  }
+
+  private callPeerAudio(remotePeerId: string): void {
+    if (!this.peer || !this.localAudioStream) return;
+    try {
+      if (this.mediaCalls.has(remotePeerId)) return;
+
+      const call = this.peer.call(remotePeerId, this.localAudioStream);
+      if (!call) return;
+
+      this.mediaCalls.set(remotePeerId, call);
+
+      call.on('stream', (remoteStream) => {
+        this.playRemoteAudio(remotePeerId, remoteStream);
+      });
+
+      call.on('close', () => {
+        this.mediaCalls.delete(remotePeerId);
+      });
+
+      call.on('error', () => {
+        this.mediaCalls.delete(remotePeerId);
+      });
+    } catch {
+      // Ignored
+    }
+  }
+
+  private playRemoteAudio(peerId: string, remoteStream: MediaStream): void {
+    const cleanId = peerId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    let audio = document.getElementById('audio_peer_' + cleanId) as HTMLAudioElement;
+    if (!audio) {
+      audio = document.createElement('audio');
+      audio.id = 'audio_peer_' + cleanId;
+      audio.autoplay = true;
+      audio.setAttribute('playsinline', 'true');
+      audio.style.display = 'none';
+      document.body.appendChild(audio);
+    }
+    audio.srcObject = remoteStream;
+    audio.play().catch(() => {});
+  }
+
   // ==================== WEBRTC (PEERJS) ENGINE ====================
   private getPeerRoomId(lobbyId: string): string {
     return 'ss2_' + lobbyId.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -258,10 +396,9 @@ export class MultiplayerSystem {
       this.disconnectPeer();
       const hostPeerId = this.getPeerRoomId(lobbyId);
 
-      this.peer = new Peer(hostPeerId, {
-        debug: 0
-      });
+      this.peer = new Peer(hostPeerId, { debug: 0 });
 
+      // Incoming Data Connections
       this.peer.on('connection', (conn) => {
         this.connections.set(conn.peer, conn);
 
@@ -282,10 +419,32 @@ export class MultiplayerSystem {
         conn.on('error', () => {
           this.connections.delete(conn.peer);
         });
+
+        // Call client for voice chat
+        if (this.localAudioStream) {
+          this.callPeerAudio(conn.peer);
+        }
+      });
+
+      // Incoming Voice Calls
+      this.peer.on('call', async (call) => {
+        if (!this.localAudioStream) {
+          await this.initVoiceChat();
+        }
+        call.answer(this.localAudioStream || undefined);
+        this.mediaCalls.set(call.peer, call);
+
+        call.on('stream', (remoteStream) => {
+          this.playRemoteAudio(call.peer, remoteStream);
+        });
+
+        call.on('close', () => {
+          this.mediaCalls.delete(call.peer);
+        });
       });
 
       this.peer.on('error', () => {
-        // Fallback gracefully to BroadcastChannel if ID collision or offline
+        // Fallback gracefully
       });
     } catch {
       // Ignored
@@ -300,6 +459,23 @@ export class MultiplayerSystem {
 
       this.peer = new Peer(myPeerId, { debug: 0 });
 
+      // Incoming Voice Calls from Host
+      this.peer.on('call', async (call) => {
+        if (!this.localAudioStream) {
+          await this.initVoiceChat();
+        }
+        call.answer(this.localAudioStream || undefined);
+        this.mediaCalls.set(call.peer, call);
+
+        call.on('stream', (remoteStream) => {
+          this.playRemoteAudio(call.peer, remoteStream);
+        });
+
+        call.on('close', () => {
+          this.mediaCalls.delete(call.peer);
+        });
+      });
+
       this.peer.on('open', () => {
         const conn = this.peer!.connect(hostPeerId, { reliable: true });
         this.hostConnection = conn;
@@ -311,6 +487,11 @@ export class MultiplayerSystem {
             user: this.currentUser,
             sessionId: this.sessionId
           });
+
+          // Connect voice call to host
+          if (this.localAudioStream) {
+            this.callPeerAudio(hostPeerId);
+          }
         });
 
         conn.on('data', (data) => {
@@ -344,6 +525,11 @@ export class MultiplayerSystem {
     });
     this.connections.clear();
 
+    this.mediaCalls.forEach((call) => {
+      try { call.close(); } catch {}
+    });
+    this.mediaCalls.clear();
+
     if (this.peer) {
       try { this.peer.destroy(); } catch {}
       this.peer = null;
@@ -374,6 +560,7 @@ export class MultiplayerSystem {
       vehicleId,
       outfitId,
       isStreaming: isStreaming || false,
+      isTalking: this.isTalking,
       lastSeen: Date.now()
     };
 
@@ -455,11 +642,24 @@ export class MultiplayerSystem {
       }
 
       this.updatePeer(state);
+    } else if (data.type === 'voice_talking') {
+      if (data.sessionId !== this.sessionId) {
+        const peer = this.peers.get(data.sessionId);
+        if (peer) {
+          peer.state.isTalking = !!data.isTalking;
+          this.updatePeerNameplate(peer);
+        }
+      }
     } else if (data.type === 'player_joined') {
       if (data.sessionId !== this.sessionId) {
         if (this.botFriend) {
           this.removePeer(this.botFriend.state.id);
           this.botFriend = null;
+        }
+        // Connect audio call to joining player
+        if (this.localAudioStream && this.peer) {
+          const peerTargetId = 'ss2_client_' + data.sessionId;
+          this.callPeerAudio(peerTargetId);
         }
       }
     } else if (data.type === 'chat_message') {
@@ -483,16 +683,21 @@ export class MultiplayerSystem {
         targetRotY: state.rotY 
       };
       if (this.scene) {
-        peer.mesh = this.createPeerMesh(state);
+        peer.mesh = this.createPeerMesh(peer);
         this.scene.add(peer.mesh);
       }
       this.peers.set(state.id, peer);
       this.notifyPeers();
     }
 
+    const wasTalking = peer.state.isTalking;
     peer.state = state;
     peer.targetPos.set(state.x, state.y, state.z);
     peer.targetRotY = state.rotY;
+
+    if (wasTalking !== state.isTalking) {
+      this.updatePeerNameplate(peer);
+    }
 
     // Vehicle visibility toggle
     if (peer.mesh) {
@@ -503,7 +708,54 @@ export class MultiplayerSystem {
     }
   }
 
-  private createPeerMesh(state: MultiplayerPeerState): THREE.Group {
+  private updatePeerNameplate(peer: { state: MultiplayerPeerState; nameplateCanvas?: HTMLCanvasElement; nameplateTexture?: THREE.CanvasTexture }): void {
+    if (!peer.nameplateCanvas || !peer.nameplateTexture) return;
+    this.drawNameplateOnCanvas(peer.nameplateCanvas, peer.state.name, !!peer.state.isTalking);
+    peer.nameplateTexture.needsUpdate = true;
+  }
+
+  private drawNameplateOnCanvas(canvas: HTMLCanvasElement, name: string, isTalking: boolean): void {
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = isTalking ? 'rgba(6, 78, 59, 0.95)' : 'rgba(15, 23, 42, 0.88)';
+    if (ctx.roundRect) {
+      ctx.roundRect(6, 6, canvas.width - 12, canvas.height - 12, 14);
+    } else {
+      ctx.fillRect(6, 6, canvas.width - 12, canvas.height - 12);
+    }
+    ctx.fill();
+
+    ctx.strokeStyle = isTalking ? '#10b981' : '#38bdf8';
+    ctx.lineWidth = isTalking ? 4 : 3;
+    ctx.stroke();
+
+    if (isTalking) {
+      // Talking icon and pulsating text
+      ctx.font = '24px sans-serif';
+      ctx.fillText('🎙️', 16, 44);
+
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${name} [ГОВОРИТЬ...]`, 52, 42);
+    } else {
+      // Normal online dot
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(32, 36, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Name text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(name, 50, 42);
+    }
+  }
+
+  private createPeerMesh(peerItem: { state: MultiplayerPeerState; nameplateCanvas?: HTMLCanvasElement; nameplateTexture?: THREE.CanvasTexture }): THREE.Group {
+    const state = peerItem.state;
     const group = new THREE.Group();
     group.position.set(state.x, state.y, state.z);
 
@@ -567,41 +819,20 @@ export class MultiplayerSystem {
 
     group.add(vehGroup);
 
-    // 5. Overhead 3D Nameplate Sprite with Green Online Dot
+    // 5. Overhead 3D Nameplate Sprite with Dynamic Talking Status
     const canvas = document.createElement('canvas');
-    canvas.width = 300;
+    canvas.width = 320;
     canvas.height = 72;
-    const ctx = canvas.getContext('2d')!;
-
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-    if (ctx.roundRect) {
-      ctx.roundRect(6, 6, 288, 60, 14);
-    } else {
-      ctx.fillRect(6, 6, 288, 60);
-    }
-    ctx.fill();
-
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Green online dot
-    ctx.fillStyle = '#10b981';
-    ctx.beginPath();
-    ctx.arc(32, 36, 8, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Name text
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 22px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(state.name, 50, 42);
+    peerItem.nameplateCanvas = canvas;
+    this.drawNameplateOnCanvas(canvas, state.name, !!state.isTalking);
 
     const texture = new THREE.CanvasTexture(canvas);
+    peerItem.nameplateTexture = texture;
     const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
     const sprite = new THREE.Sprite(spriteMat);
+    sprite.name = 'peer_nameplate_sprite';
     sprite.position.y = 2.35;
-    sprite.scale.set(2.6, 0.65, 1);
+    sprite.scale.set(2.7, 0.65, 1);
     group.add(sprite);
 
     return group;
@@ -641,6 +872,7 @@ export class MultiplayerSystem {
         rotY: 0,
         isRidingVehicle: false,
         isStreaming: true,
+        isTalking: false,
         lastSeen: Date.now()
       },
       targetX: 8,

@@ -148,6 +148,16 @@ export class HudUI {
     }, 2800);
   }
 
+  public setVoiceTalking(isTalking: boolean): void {
+    const el = document.getElementById('voice-hud-indicator');
+    if (!el) return;
+    if (isTalking) {
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+
   public showLocationBanner(locName: string): void {
     if (this.lastLocation === locName) return;
     this.lastLocation = locName;

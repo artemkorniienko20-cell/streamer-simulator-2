@@ -110,6 +110,7 @@ export interface MultiplayerPeerState {
   vehicleId?: string;
   outfitId?: string;
   isStreaming: boolean;
+  isTalking?: boolean;
   lastSeen: number;
 }
 

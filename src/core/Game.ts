@@ -284,6 +284,23 @@ export class Game {
         this.hud.showToast(`👥 Гравець у лобі: ${names}!`, 'info');
       }
     });
+
+    // [X] Voice Chat Push-to-Talk (Hold [X] to speak)
+    this.input.onVoiceStart(() => {
+      if (this.multiplayer.isInMultiplayer()) {
+        this.multiplayer.startVoiceTransmission().catch(() => {});
+      }
+    });
+
+    this.input.onVoiceEnd(() => {
+      if (this.multiplayer.isInMultiplayer()) {
+        this.multiplayer.stopVoiceTransmission();
+      }
+    });
+
+    this.multiplayer.onVoiceStatusChange((isTalking) => {
+      this.hud.setVoiceTalking(isTalking);
+    });
   }
 
   private onStartGame(mode: 'solo' | 'multiplayer'): void {
@@ -304,6 +321,8 @@ export class Game {
       if (multiRoomName) {
         multiRoomName.textContent = lobby ? lobby.name : 'Мультиплеєр';
       }
+      // Prepare voice chat microphone stream in advance
+      this.multiplayer.initVoiceChat().catch(() => {});
       // Offset spawn position slightly so players don't overlap
       const p = this.gasStation.spawnPos.clone();
       p.x += (Math.random() - 0.5) * 5;
