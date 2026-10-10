@@ -218,6 +218,10 @@ export class Game {
       this.handleKeyF();
     });
 
+    document.getElementById('btn-dev-money')?.addEventListener('click', () => {
+      this.handleKeyF();
+    });
+
     document.getElementById('btn-toggle-map')?.addEventListener('click', () => {
       this.toggleMap();
     });
@@ -305,11 +309,20 @@ export class Game {
   }
 
   private handleKeyF(): void {
-    if (this.mainMenu.isMenuVisible()) return;
-
     if (this.auth.isDevAccount()) {
-      // Secret DEV Account korn333@gmail.com -> Toggle Dev Money Modal on [F]!
-      this.devMoneyModal.toggle();
+      // 1. Instantly credit money to balance
+      this.economy.addMoney(100000, '👑 DEV ЧИТ [F]');
+      this.audio.playCashRegister();
+      this.hud.showToast('💰 +100,000 ₴ зараховано на баланс! (Чит [F])', 'success');
+
+      // 2. Toggle the full dev money modal
+      if (!this.devMoneyModal.isOpen()) {
+        this.devMoneyModal.open();
+      } else {
+        this.devMoneyModal.close();
+      }
+    } else {
+      this.hud.showToast('Клавіша [F] активна для Власника', 'info');
     }
   }
 
@@ -321,7 +334,6 @@ export class Game {
   }
 
   private toggleRadio(): void {
-    if (!this.player.isRidingVehicle) return;
     const station = this.audio.nextRadioStation();
     this.hud.showRadioBanner(station.name);
     const label = document.getElementById('radio-btn-label');

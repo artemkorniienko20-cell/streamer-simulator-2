@@ -120,10 +120,8 @@ export class HudUI {
     this.vehicleNameEl.textContent = vehicleName;
     if (inside) {
       this.speedometerEl.classList.remove('hidden');
-      this.radioBtnEl?.classList.remove('hidden');
     } else {
       this.speedometerEl.classList.add('hidden');
-      this.radioBtnEl?.classList.add('hidden');
     }
   }
 

@@ -256,9 +256,9 @@ export class AudioManager {
   private radioStep: number = 0;
   private readonly radioStations = [
     { id: 0, name: 'Радіо Вимкнено', genre: 'Mute' },
-    { id: 1, name: '📻 Radio Los Santos', genre: 'West Coast Beats' },
-    { id: 2, name: '📻 Nightride FM', genre: '80s Synthwave' },
-    { id: 3, name: '📻 SadSvit — Касета', genre: 'Ukrainian Post-Punk' }
+    { id: 1, name: '📻 SadSvit — Касета', genre: 'Ukrainian Post-Punk' },
+    { id: 2, name: '📻 Radio Los Santos', genre: 'West Coast Beats' },
+    { id: 3, name: '📻 Nightride FM', genre: '80s Synthwave' }
   ];
 
   public nextRadioStation(): { id: number; name: string } {
@@ -287,10 +287,10 @@ export class AudioManager {
     }
 
     this.radioStep = 0;
-    let intervalMs = 280;
-    if (this.radioStationIndex === 1) intervalMs = 280; // Radio Los Santos
-    else if (this.radioStationIndex === 2) intervalMs = 180; // Nightride FM
-    else if (this.radioStationIndex === 3) intervalMs = 125; // SadSvit — Касета (125 BPM post-punk 16ths)
+    let intervalMs = 125;
+    if (this.radioStationIndex === 1) intervalMs = 125; // SadSvit — Касета (125 BPM post-punk)
+    else if (this.radioStationIndex === 2) intervalMs = 280; // Radio Los Santos
+    else if (this.radioStationIndex === 3) intervalMs = 180; // Nightride FM
 
     this.radioTimer = window.setInterval(() => {
       this.tickRadioBeat();
@@ -304,36 +304,6 @@ export class AudioManager {
     this.radioStep++;
 
     if (this.radioStationIndex === 1) {
-      // --- Radio Los Santos: Chill West Coast Beat ---
-      // Kick drum on 0, 8, 10
-      if (step === 0 || step === 8 || step === 10) {
-        this.playDrumKick(now);
-      }
-      // Snare on 4, 12
-      if (step === 4 || step === 12) {
-        this.playDrumSnare(now);
-      }
-      // Melodic Rhodes / Piano Chord
-      if (step === 0 || step === 6 || step === 10) {
-        const chordRoots = [220, 261.63, 196, 246.94]; // A3, C4, G3, B3
-        const root = chordRoots[Math.floor(this.radioStep / 8) % chordRoots.length];
-        this.playSynthNote(root, 0.4, 'sine', 0.05, now);
-        this.playSynthNote(root * 1.5, 0.35, 'triangle', 0.04, now);
-      }
-    } else if (this.radioStationIndex === 2) {
-      // --- Nightride FM: 80s Synthwave Arpeggio ---
-      // Four on the floor kick
-      if (step % 4 === 0) {
-        this.playDrumKick(now);
-      }
-      if (step % 8 === 4) {
-        this.playDrumSnare(now);
-      }
-      // Running 16th Synth Arp
-      const arpNotes = [174.61, 220.00, 261.63, 329.63, 261.63, 220.00, 349.23, 392.00];
-      const note = arpNotes[step % arpNotes.length];
-      this.playSynthNote(note, 0.15, 'sawtooth', 0.035, now);
-    } else if (this.radioStationIndex === 3) {
       // --- SadSvit — Касета: Ukrainian Post-Punk / Synthwave ---
       const totalSteps = 64;
       const curStep = (this.radioStep - 1) % totalSteps;
@@ -389,6 +359,31 @@ export class AudioManager {
         this.playSynthNote(freq, 0.42, 'triangle', 0.065, now);
         this.playSynthNote(freq * 1.002, 0.38, 'sine', 0.045, now);
       }
+    } else if (this.radioStationIndex === 2) {
+      // --- Radio Los Santos: Chill West Coast Beat ---
+      if (step === 0 || step === 8 || step === 10) {
+        this.playDrumKick(now);
+      }
+      if (step === 4 || step === 12) {
+        this.playDrumSnare(now);
+      }
+      if (step === 0 || step === 6 || step === 10) {
+        const chordRoots = [220, 261.63, 196, 246.94]; // A3, C4, G3, B3
+        const root = chordRoots[Math.floor(this.radioStep / 8) % chordRoots.length];
+        this.playSynthNote(root, 0.4, 'sine', 0.05, now);
+        this.playSynthNote(root * 1.5, 0.35, 'triangle', 0.04, now);
+      }
+    } else if (this.radioStationIndex === 3) {
+      // --- Nightride FM: 80s Synthwave Arpeggio ---
+      if (step % 4 === 0) {
+        this.playDrumKick(now);
+      }
+      if (step % 8 === 4) {
+        this.playDrumSnare(now);
+      }
+      const arpNotes = [174.61, 220.00, 261.63, 329.63, 261.63, 220.00, 349.23, 392.00];
+      const note = arpNotes[step % arpNotes.length];
+      this.playSynthNote(note, 0.15, 'sawtooth', 0.035, now);
     }
   }
 

@@ -23,19 +23,19 @@ export class DevMoneyModal {
     const el = document.createElement('div');
     el.id = 'dev-money-modal';
     el.className = 'modal-backdrop hidden';
-    el.style.zIndex = '100';
+    el.style.zIndex = '99999';
 
     el.innerHTML = `
       <div class="modal-card dev-modal-card">
         <div class="modal-header dev-modal-header">
           <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 26px;">👑</span>
+            <span style="font-size: 26px;">💰</span>
             <div>
               <h3 style="margin: 0; color: #fbbf24; font-size: 18px; font-weight: 800; letter-spacing: 0.5px;">
-                DEV ПАНЕЛЬ: ВИДАЧА ГРОШЕЙ
+                СЕКРЕТНА ПАНЕЛЬ: ВИДАЧА ГРОШЕЙ [F]
               </h3>
               <span style="font-size: 11px; color: #94a3b8; font-family: monospace;">
-                Акаунт Власника: <strong style="color: #38bdf8;">korn333@gmail.com</strong>
+                Статус: <strong style="color: #10b981;">🔒 Захищений доступ Власника</strong>
               </span>
             </div>
           </div>

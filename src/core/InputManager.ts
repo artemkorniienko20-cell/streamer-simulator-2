@@ -28,19 +28,22 @@ export class InputManager {
 
     this.keys[e.code] = true;
 
-    if (e.code === 'KeyE') {
+    const code = e.code;
+    const key = e.key ? e.key.toLowerCase() : '';
+
+    if (code === 'KeyE' || key === 'e' || key === 'у') {
       this.onInteractCallbacks.forEach((cb) => cb());
-    } else if (e.code === 'KeyP') {
+    } else if (code === 'KeyP' || key === 'p' || key === 'з') {
       this.onPhoneCallbacks.forEach((cb) => cb());
-    } else if (e.code === 'KeyM') {
+    } else if (code === 'KeyM' || key === 'm' || key === 'ь') {
       this.onMapCallbacks.forEach((cb) => cb());
-    } else if (e.code === 'KeyF') {
+    } else if (code === 'KeyF' || key === 'f' || key === 'а') {
       this.onDevCheatCallbacks.forEach((cb) => cb());
-    } else if (e.code === 'KeyH') {
+    } else if (code === 'KeyH' || key === 'h' || key === 'р') {
       this.onHornCallbacks.forEach((cb) => cb());
-    } else if (e.code === 'KeyV') {
+    } else if (code === 'KeyV' || key === 'v' || key === 'м') {
       this.onCameraToggleCallbacks.forEach((cb) => cb());
-    } else if (e.code === 'KeyR') {
+    } else if (code === 'KeyR' || key === 'r' || key === 'к') {
       this.onRadioCallbacks.forEach((cb) => cb());
     }
   }

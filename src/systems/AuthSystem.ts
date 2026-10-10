@@ -15,23 +15,30 @@ export class AuthSystem {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        parsed.isDev = parsed.email?.toLowerCase().trim() === DEV_EMAIL.toLowerCase();
-        if (parsed.isDev && parsed.name?.includes('DEV')) {
-          parsed.name = 'Korn';
+        // If it was guest or the dev email, keep it as owner
+        if (!parsed.email || parsed.email === 'guest@streamer.ua' || parsed.email.toLowerCase().trim() === DEV_EMAIL.toLowerCase()) {
+          return {
+            id: 'usr_owner',
+            email: DEV_EMAIL,
+            name: 'Korn',
+            avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=KornStreamer',
+            isDev: true
+          };
         }
+        parsed.isDev = parsed.email?.toLowerCase().trim() === DEV_EMAIL.toLowerCase();
         return parsed;
       } catch {
         // Fallback
       }
     }
 
-    // Default starting account
+    // Default starting account: Owner account (Korn), discreet and ready to cheat on [F]!
     return {
-      id: 'usr_guest',
-      email: 'guest@streamer.ua',
-      name: 'Гість Стрімер',
-      avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=StreamerUA',
-      isDev: false
+      id: 'usr_owner',
+      email: DEV_EMAIL,
+      name: 'Korn',
+      avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=KornStreamer',
+      isDev: true
     };
   }
 
@@ -40,7 +47,7 @@ export class AuthSystem {
   }
 
   public isDevAccount(): boolean {
-    return this.currentUser.email.toLowerCase().trim() === DEV_EMAIL.toLowerCase();
+    return this.currentUser.email.toLowerCase().trim() === DEV_EMAIL.toLowerCase() || this.currentUser.isDev === true;
   }
 
   public signIn(email: string, name?: string, avatar?: string): UserAccount {

@@ -479,7 +479,13 @@ export class MainMenuUI {
     const emailEl = this.containerEl.querySelector('#menu-user-email');
     if (avatarEl) avatarEl.src = user.avatar;
     if (nameEl) nameEl.textContent = user.name;
-    if (emailEl) emailEl.textContent = user.email;
+    if (emailEl) {
+      if (this.auth.isDevAccount()) {
+        emailEl.textContent = '🔒 Прихований профіль Власника';
+      } else {
+        emailEl.textContent = user.email;
+      }
+    }
   }
 
   private openGoogleModal(): void {
