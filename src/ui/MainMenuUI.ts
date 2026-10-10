@@ -155,8 +155,17 @@ export class MainMenuUI {
         <div class="multi-tab-content hidden" id="tab-join-password">
           <div class="create-lobby-form">
             <label class="form-label">
-              <span>Оберіть кімнату або введіть ID:</span>
+              <span>Оберіть кімнату зі списку:</span>
               <select id="select-private-room" class="form-input"></select>
+            </label>
+
+            <div style="text-align: center; color: #64748b; font-size: 11px; margin: 8px 0; font-weight: 700;">
+              — АБО ВВЕДІТЬ ID КІМНАТИ ВРУЧНУ —
+            </div>
+
+            <label class="form-label">
+              <span>ID / назва кімнати друга:</span>
+              <input type="text" id="input-custom-room-id" class="form-input" placeholder="Наприклад: room_pub_1 або 777" />
             </label>
 
             <label class="form-label" style="margin-top: 14px;">
@@ -321,11 +330,12 @@ export class MainMenuUI {
     // Submit Join by Password
     this.containerEl.querySelector('#btn-submit-join-pass')?.addEventListener('click', () => {
       const select = this.containerEl.querySelector('#select-private-room') as HTMLSelectElement;
+      const customInput = this.containerEl.querySelector('#input-custom-room-id') as HTMLInputElement;
       const passInput = this.containerEl.querySelector('#input-join-pass') as HTMLInputElement;
 
-      const roomId = select.value;
+      const roomId = (customInput?.value.trim() || select.value).trim();
       if (!roomId) {
-        alert('Будь ласка, оберіть кімнату!');
+        alert('Будь ласка, введіть ID кімнати або оберіть її зі списку!');
         return;
       }
 
@@ -337,6 +347,12 @@ export class MainMenuUI {
       } else {
         alert(res.error || 'Помилка входу у лобі!');
       }
+    });
+
+    // Real-time lobbies update from other tabs/WebRTC
+    this.multiplayer.onLobbiesChange(() => {
+      this.renderPublicLobbies();
+      this.populatePrivateRoomsSelect();
     });
 
     // Google Modal triggers
@@ -424,12 +440,15 @@ export class MainMenuUI {
 
       card.innerHTML = `
         <div class="lobby-card-left">
-          <div class="lobby-badge-public">🟢 ПУБЛІЧНЕ</div>
-          <h4 class="lobby-card-title">${lobby.name}</h4>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="lobby-badge-public">🟢 ПУБЛІЧНЕ</span>
+            <span style="font-size: 11px; color: #38bdf8; font-family: monospace; font-weight: 700;">ID: ${lobby.id}</span>
+          </div>
+          <h4 class="lobby-card-title" style="margin-top: 4px;">${lobby.name}</h4>
           <div class="lobby-card-meta">
             <span>👤 Хост: <strong>${lobby.hostName}</strong></span>
             <span>👥 Гравці: <strong>${lobby.currentPlayers}/${lobby.maxPlayers}</strong></span>
-            <span>📶 Пінг: <strong style="color: #10b981;">18 ms</strong></span>
+            <span>📶 Статус: <strong style="color: #10b981;">● Онлайн</strong></span>
           </div>
         </div>
         <button class="btn-join-lobby" data-id="${lobby.id}">

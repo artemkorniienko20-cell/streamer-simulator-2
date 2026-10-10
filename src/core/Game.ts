@@ -275,6 +275,15 @@ export class Game {
     this.economy.onBalanceChange((bal) => {
       this.hud.updateBalance(bal);
     });
+
+    // Multiplayer peer notifications
+    this.multiplayer.onPeersChange((peers) => {
+      const realPeers = peers.filter((p) => !p.id.startsWith('bot_'));
+      if (realPeers.length > 0) {
+        const names = realPeers.map((p) => p.name).join(', ');
+        this.hud.showToast(`👥 Гравець у лобі: ${names}!`, 'info');
+      }
+    });
   }
 
   private onStartGame(mode: 'solo' | 'multiplayer'): void {
@@ -295,7 +304,13 @@ export class Game {
       if (multiRoomName) {
         multiRoomName.textContent = lobby ? lobby.name : 'Мультиплеєр';
       }
-      this.hud.showToast(`Приєднано до лобі: ${lobby?.name || 'Мультиплеєр'}!`, 'success');
+      // Offset spawn position slightly so players don't overlap
+      const p = this.gasStation.spawnPos.clone();
+      p.x += (Math.random() - 0.5) * 5;
+      p.z += (Math.random() - 0.5) * 5;
+      this.player.mesh.position.copy(p);
+
+      this.hud.showToast(`Приєднано до лобі: ${lobby?.name || 'Мультиплеєр'}! (ID: ${lobby?.id})`, 'success');
     }
   }
 
